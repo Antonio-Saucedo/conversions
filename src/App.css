@@ -46,7 +46,6 @@
 select {
     align-self: center;
     border-color: var(--border-color);
-    font-size: 13px;
     height: fit-content;
     margin-left: auto;
     padding: 6px 8px;
@@ -58,7 +57,6 @@ select {
     color: var(--main-color);
     font-size: 17px;
     height: 40px;
-    justify-content: center;
     margin: 10px auto;
     position: relative;
     width: 40px;
@@ -80,13 +78,12 @@ select,
 .app-container {
     background-color: var(--main-color);
     border-radius: 15px;
-    padding: 10px;
+    box-shadow: 0 20px var(--shadow-blur) var(--shadow-spread) rgba(var(--shadow-color), var(--shadow-opacity));
 }
 
 body {
     background-color: var(--page-bg);
     background-image: radial-gradient(circle at 15% 10%, rgba(47, 111, 173, 0.12), transparent 40%), radial-gradient(circle at 85% 90%, rgba(193, 99, 31, 0.12), transparent 40%);
-    justify-content: center;
     min-height: 100vh;
     min-height: 100dvh;
 }
@@ -113,15 +110,14 @@ select {
 .conversion-container {
     border-radius: 5px;
     gap: 10px;
-    padding: 10px;
 }
 
 .buttons-container {
     border-radius: 8px;
     display: grid;
+    font-size: 16px;
     grid-template-columns: repeat(3, 1fr);
     margin: 15px 0;
-    padding: 10px;
 }
 
 .swap-button-hover-box {
@@ -133,13 +129,9 @@ select {
     width: 125px;
 }
 
-.app-container {
-    box-shadow: 0 20px var(--shadow-blur) var(--shadow-spread) rgba(var(--shadow-color), var(--shadow-opacity));
-}
-
 #app-mode,
 #conversion-value {
-    color: var(--accent-color)
+    color: var(--accent-color);
 }
 
 h2,
@@ -196,16 +188,16 @@ h3 {
     font-size: 12px;
 }
 
+select,
 .button-last-row {
     font-size: 13px;
 }
 
 h2 {
     font-size: 14px;
-}
-
-.buttons-container {
-    font-size: 16px;
+    justify-self: center;
+    margin-bottom: 10px;
+    width: fit-content;
 }
 
 h1 {
@@ -241,16 +233,18 @@ h1,
     grid-column: 1 / span 3;
 }
 
+body,
+.swap-button {
+    justify-content: center;
+}
+
 select:focus-visible {
     outline: none;
 }
 
-h2 {
-    margin-bottom: 10px;
-}
-
 .computation-type-label {
     margin-bottom: 15px;
+    padding: 6px 10px;
 }
 
 footer {
@@ -274,8 +268,11 @@ body {
     scrollbar-width: thin;
 }
 
-.computation-type-label {
-    padding: 6px 10px;
+.app-container,
+.display-container,
+.buttons-container,
+.conversion-container {
+    padding: 10px;
 }
 
 .text-center {

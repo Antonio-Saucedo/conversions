@@ -112,7 +112,7 @@ function App() {
         <div className="app-container">
             <header className="text-center">
                 <h1>Instant Conversion</h1>
-                <h2 onClick={() => {
+                <h2 className="pointer" onClick={() => {
                     const appMode = document.getElementById('app-mode') as HTMLElement;
                     document.documentElement.setAttribute('data-theme', [null, ''].includes(document.documentElement.getAttribute('data-theme')) ? 'dark' : '');
                     appMode.innerText = appMode.innerText === '☾ Dark' ? '☀ Light' : '☾ Dark';
