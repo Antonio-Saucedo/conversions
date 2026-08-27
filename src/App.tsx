@@ -1,4 +1,14 @@
-const CONVERSION_RATES = {
+import './App.css';
+
+type WeightUnit = 'g' | 'kg' | 'mt' | 'mcg' | 'mg' | 'oz' | 'lb';
+
+type ConversionRates = {
+    [K in WeightUnit]: {
+        [T in WeightUnit as T extends K ? never : T]: number;
+    };
+};
+
+const CONVERSION_RATES: ConversionRates = {
     g: {kg: 0.001, mt: 0.000001, mcg: 1000000, mg: 1000, oz: 0.03527396195, lb: 0.00220462262},
     kg: {g: 1000, mt: 0.001, mcg: 1000000000, mg: 1000000, oz: 35.27396195, lb: 2.20462262},
     mt: {g: 1000000, kg: 1000, mcg: 1000000000000, mg: 1000000000, oz: 35273.96195, lb: 2204.62262},
@@ -14,40 +24,44 @@ const CONVERSION_RATES = {
 
 function App() {
 
-    function updateInput(button, inputValueContainer) {
+    function updateInput(button: React.MouseEvent<HTMLDivElement>, inputValueContainer: HTMLElement): void {
         // The character on the button that was clicked (e.g. '7', '.', '⌫')
-        const key = button.target.textContent;
+        const key = (button.target as HTMLElement).textContent ?? '';
 
         // Handle digit keys (0-9) separately from the operator keys below
         if (/^[0-9]$/.test(key)) {
             // Strip leading zero(s) — but not "0." for decimals — while preserving
             // a leading "-" sign if one is present (e.g. "-0" + "2" => "-2", not "-02")
-            inputValueContainer.textContent = inputValueContainer.textContent.replace(/^(-?)0+(?!\.)/, '$1') + key;
+            inputValueContainer.textContent = (inputValueContainer.textContent ?? '').replace(/^(-?)0+(?!\.)/, '$1') + key;
             return; // stop here so we don't fall through into the switch below
         }
 
         switch (key) {
-            case '±':
+            case '±': {
                 // Toggle the negative sign: remove it if present, add it if not
-                inputValueContainer.textContent = inputValueContainer.textContent.includes('-') ? inputValueContainer.textContent.slice(1) : '-' + inputValueContainer.textContent;
+                const current = inputValueContainer.textContent ?? '';
+                inputValueContainer.textContent = current.includes('-') ? current.slice(1) : '-' + current;
                 break;
+            }
 
             case '.':
                 // Only add a decimal point if one doesn't already exist
-                if (!inputValueContainer.textContent.includes('.')) {
-                    inputValueContainer.textContent = inputValueContainer.textContent + '.';
+                if (!(inputValueContainer.textContent ?? '').includes('.')) {
+                    inputValueContainer.textContent = (inputValueContainer.textContent ?? '') + '.';
                 }
                 break;
 
-            case '⌫':
+            case '⌫': {
                 // Remove the last character, unless doing so would leave '' or just '-',
                 // in which case reset to '0' instead
-                if (!['', '-'].includes(inputValueContainer.textContent.slice(0, -1))) {
-                    inputValueContainer.textContent = inputValueContainer.textContent.slice(0, -1);
+                const current = inputValueContainer.textContent ?? '';
+                if (!['', '-'].includes(current.slice(0, -1))) {
+                    inputValueContainer.textContent = current.slice(0, -1);
                 } else {
                     inputValueContainer.textContent = '0';
                 }
                 break;
+            }
 
             default:
                 // Any other key (e.g. unrecognized button) resets the display
@@ -56,25 +70,23 @@ function App() {
         }
     }
 
-    function convertValue(fromSelectorValue, toSelectorValue, inputValue, conversionValueContainer) {
-        const conversionRate = CONVERSION_RATES[fromSelectorValue]?.[toSelectorValue] ?? 1;
-        // conversionValueContainer.innerHTML = Number(inputValue) * conversionRate;
-        conversionValueContainer.innerHTML = Number((Math.round((Number(inputValue) * conversionRate + Number.EPSILON) * 100) / 100).toFixed(2));
-        console.log(Number(inputValue) * conversionRate);
+    function convertValue(fromSelectorValue: WeightUnit, toSelectorValue: WeightUnit, inputValue: string, conversionValueContainer: HTMLElement): void {
+        const conversionRate: number = (CONVERSION_RATES[fromSelectorValue] as Record<string, number>)[toSelectorValue] ?? 1;
+        conversionValueContainer.innerHTML = String(Number((Math.round((Number(inputValue) * conversionRate + Number.EPSILON) * 100) / 100).toFixed(2)));
 
         displayFormula(fromSelectorValue, toSelectorValue, conversionRate);
     }
 
-    function displayFormula(fromSelectorValue, toSelectorValue, conversionRate) {
-        const formulaContainer = document.getElementById('formula-container');
+    function displayFormula(fromSelectorValue: WeightUnit, toSelectorValue: WeightUnit, conversionRate: number): void {
+        const formulaContainer = document.getElementById('formula-container') as HTMLElement;
         formulaContainer.textContent = fromSelectorValue + ' = ' + toSelectorValue + ' x ' + conversionRate;
     }
 
-    function handleConversion(button) {
-        const fromSelectorValue = document.getElementById('from-selector').value;
-        const toSelectorValue = document.getElementById('to-selector').value;
-        const inputValueContainer = document.getElementById('input-value');
-        const conversionValueContainer = document.getElementById('conversion-value');
+    function handleConversion(button?: React.MouseEvent<HTMLDivElement>): void {
+        const fromSelectorValue = (document.getElementById('from-selector') as HTMLSelectElement).value as WeightUnit;
+        const toSelectorValue = (document.getElementById('to-selector') as HTMLSelectElement).value as WeightUnit;
+        const inputValueContainer = document.getElementById('input-value') as HTMLElement;
+        const conversionValueContainer = document.getElementById('conversion-value') as HTMLElement;
 
         if (button) {
             updateInput(button, inputValueContainer);
@@ -85,10 +97,10 @@ function App() {
         convertValue(fromSelectorValue, toSelectorValue, inputValue, conversionValueContainer);
     }
 
-    function switchConversions() {
-        const fromSelector = document.getElementById('from-selector');
+    function switchConversions(): void {
+        const fromSelector = document.getElementById('from-selector') as HTMLSelectElement;
         const fromSelectorValue = fromSelector.value;
-        const toSelector = document.getElementById('to-selector');
+        const toSelector = document.getElementById('to-selector') as HTMLSelectElement;
 
         fromSelector.value = toSelector.value;
         toSelector.value = fromSelectorValue;
@@ -101,7 +113,7 @@ function App() {
             <header className="text-center">
                 <h1>Instant Conversion</h1>
                 <h2 onClick={() => {
-                    const appMode = document.getElementById('app-mode');
+                    const appMode = document.getElementById('app-mode') as HTMLElement;
                     document.documentElement.setAttribute('data-theme', [null, ''].includes(document.documentElement.getAttribute('data-theme')) ? 'dark' : '');
                     appMode.innerText = appMode.innerText === '☾ Dark' ? '☀ Light' : '☾ Dark';
                 }}><span id="app-mode">☾ Dark</span> mode</h2>
@@ -147,21 +159,37 @@ function App() {
                     </select>
                 </div>
                 <div className="buttons-container dashed-border">
-                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>7</div>
-                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>8</div>
-                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>9</div>
-                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>4</div>
-                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>5</div>
-                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>6</div>
-                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>1</div>
-                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>2</div>
-                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>3</div>
-                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>±</div>
-                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>0</div>
-                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>.</div>
+                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>7
+                    </div>
+                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>8
+                    </div>
+                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>9
+                    </div>
+                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>4
+                    </div>
+                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>5
+                    </div>
+                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>6
+                    </div>
+                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>1
+                    </div>
+                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>2
+                    </div>
+                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>3
+                    </div>
+                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>±
+                    </div>
+                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>0
+                    </div>
+                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>.
+                    </div>
                     <div className="button-last-row flex">
-                        <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>Clear</div>
-                        <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>⌫</div>
+                        <div className="button solid-border text-center pointer"
+                             onClick={(e) => handleConversion(e)}>Clear
+                        </div>
+                        <div className="button solid-border text-center pointer"
+                             onClick={(e) => handleConversion(e)}>⌫
+                        </div>
                     </div>
                 </div>
                 <div id="formula-container" className="text-center">kg = lb x 2.20462262</div>
