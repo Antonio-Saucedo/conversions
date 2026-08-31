@@ -1,3 +1,4 @@
+import {useEffect, useMemo, useState} from 'react';
 import './App.css';
 
 type WeightUnit = 'g' | 'kg' | 'mt' | 'mcg' | 'mg' | 'oz' | 'lb';
@@ -22,177 +23,140 @@ const CONVERSION_RATES: ConversionRates = {
     lb: {g: 453.59237, kg: 0.45359237, mt: 0.00045359237, mcg: 453592370, mg: 453592.37, oz: 16},
 };
 
+const UNIT_OPTIONS: { value: WeightUnit; label: string }[] = [
+    {value: 'kg', label: 'KG'},
+    {value: 'lb', label: 'LB'},
+    {value: 'g', label: 'G'},
+    {value: 'mt', label: 'MT'},
+    {value: 'mcg', label: 'MCG'},
+    {value: 'mg', label: 'MG'},
+    {value: 'oz', label: 'OZ'},
+];
+
+const KEYPAD_KEYS = ['7', '8', '9', '4', '5', '6', '1', '2', '3', '±', '0', '.'];
+
+function getConversionRate(from: WeightUnit, to: WeightUnit): number {
+    if (from === to) return 1;
+    const rates = CONVERSION_RATES[from] as Record<WeightUnit, number>;
+    return rates[to];
+}
+
 function App() {
+    const [rawValue, setRawValue] = useState('0');
+    const [fromUnit, setFromUnit] = useState<WeightUnit>('kg');
+    const [toUnit, setToUnit] = useState<WeightUnit>('lb');
+    const [isDark, setIsDark] = useState(false);
 
-    function updateInput(button: React.MouseEvent<HTMLDivElement>, inputValueContainer: HTMLElement): void {
-        // The character on the button that was clicked (e.g. '7', '.', '⌫')
-        const key = (button.target as HTMLElement).textContent ?? '';
+    useEffect(() => {
+        document.documentElement.setAttribute('data-theme', isDark ? 'dark' : '');
+    }, [isDark]);
 
-        // Handle digit keys (0-9) separately from the operator keys below
+    const rate = useMemo(() => getConversionRate(fromUnit, toUnit), [fromUnit, toUnit]);
+    const result = useMemo(() => {
+        const numericValue = Number(rawValue);
+        if (numericValue === 0) return '0';
+        const raw = numericValue * rate;
+        if (Math.abs(raw) < 0.001 || Math.abs(raw) >= 1e9) return raw.toExponential(2);
+        return raw.toFixed(2);
+    }, [rawValue, rate]);
+    const formula = `${toUnit} = ${fromUnit} x ${rate}`;
+
+    function appendDigit(digit: string) {
+        setRawValue(prev => prev.replace(/^(-?)0+(?!\.)/, '$1') + digit);
+    }
+
+    function toggleSign() {
+        setRawValue(prev => (prev.includes('-') ? prev.slice(1) : '-' + prev));
+    }
+
+    function appendDecimal() {
+        setRawValue(prev => (prev.includes('.') ? prev : prev + '.'));
+    }
+
+    function backspace() {
+        setRawValue(prev => {
+            const next = prev.slice(0, -1);
+            return ['', '-'].includes(next) ? '0' : next;
+        });
+    }
+
+    function clearValue() {
+        setRawValue('0');
+    }
+
+    function handleKeypadPress(key: string) {
         if (/^[0-9]$/.test(key)) {
-            // Strip leading zero(s) — but not "0." for decimals — while preserving
-            // a leading "-" sign if one is present (e.g. "-0" + "2" => "-2", not "-02")
-            inputValueContainer.textContent = (inputValueContainer.textContent ?? '').replace(/^(-?)0+(?!\.)/, '$1') + key;
-            return; // stop here so we don't fall through into the switch below
+            appendDigit(key);
+            return;
         }
-
         switch (key) {
-            case '±': {
-                // Toggle the negative sign: remove it if present, add it if not
-                const current = inputValueContainer.textContent ?? '';
-                inputValueContainer.textContent = current.includes('-') ? current.slice(1) : '-' + current;
+            case '±':
+                toggleSign();
                 break;
-            }
-
             case '.':
-                // Only add a decimal point if one doesn't already exist
-                if (!(inputValueContainer.textContent ?? '').includes('.')) {
-                    inputValueContainer.textContent = (inputValueContainer.textContent ?? '') + '.';
-                }
-                break;
-
-            case '⌫': {
-                // Remove the last character, unless doing so would leave '' or just '-',
-                // in which case reset to '0' instead
-                const current = inputValueContainer.textContent ?? '';
-                if (!['', '-'].includes(current.slice(0, -1))) {
-                    inputValueContainer.textContent = current.slice(0, -1);
-                } else {
-                    inputValueContainer.textContent = '0';
-                }
-                break;
-            }
-
-            default:
-                // Any other key (e.g. unrecognized button) resets the display
-                inputValueContainer.textContent = '0';
+                appendDecimal();
                 break;
         }
     }
 
-    function convertValue(fromSelectorValue: WeightUnit, toSelectorValue: WeightUnit, inputValue: string, conversionValueContainer: HTMLElement): void {
-        const conversionRate: number = (CONVERSION_RATES[fromSelectorValue] as Record<string, number>)[toSelectorValue] ?? 1;
-        conversionValueContainer.innerHTML = String(Number((Math.round((Number(inputValue) * conversionRate + Number.EPSILON) * 100) / 100).toFixed(2)));
-
-        displayFormula(fromSelectorValue, toSelectorValue, conversionRate);
-    }
-
-    function displayFormula(fromSelectorValue: WeightUnit, toSelectorValue: WeightUnit, conversionRate: number): void {
-        const formulaContainer = document.getElementById('formula-container') as HTMLElement;
-        formulaContainer.textContent = fromSelectorValue + ' = ' + toSelectorValue + ' x ' + conversionRate;
-    }
-
-    function handleConversion(button?: React.MouseEvent<HTMLDivElement>): void {
-        const fromSelectorValue = (document.getElementById('from-selector') as HTMLSelectElement).value as WeightUnit;
-        const toSelectorValue = (document.getElementById('to-selector') as HTMLSelectElement).value as WeightUnit;
-        const inputValueContainer = document.getElementById('input-value') as HTMLElement;
-        const conversionValueContainer = document.getElementById('conversion-value') as HTMLElement;
-
-        if (button) {
-            updateInput(button, inputValueContainer);
-        }
-
-        const inputValue = inputValueContainer.innerHTML;
-
-        convertValue(fromSelectorValue, toSelectorValue, inputValue, conversionValueContainer);
-    }
-
-    function switchConversions(): void {
-        const fromSelector = document.getElementById('from-selector') as HTMLSelectElement;
-        const fromSelectorValue = fromSelector.value;
-        const toSelector = document.getElementById('to-selector') as HTMLSelectElement;
-
-        fromSelector.value = toSelector.value;
-        toSelector.value = fromSelectorValue;
-
-        handleConversion();
+    function switchConversions() {
+        setFromUnit(toUnit);
+        setToUnit(fromUnit);
     }
 
     return (<>
         <div className="app-container">
             <header className="text-center">
                 <h1>Instant Conversion</h1>
-                <h2 className="pointer" onClick={() => {
-                    const appMode = document.getElementById('app-mode') as HTMLElement;
-                    document.documentElement.setAttribute('data-theme', [null, ''].includes(document.documentElement.getAttribute('data-theme')) ? 'dark' : '');
-                    appMode.innerText = appMode.innerText === '☾ Dark' ? '☀ Light' : '☾ Dark';
-                }}><span id="app-mode">☾ Dark</span> mode</h2>
+                <h2 className="pointer" role="button" tabIndex={0} onClick={() => setIsDark(prev => !prev)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') setIsDark(prev => !prev);
+                    }}><span id="app-mode">{isDark ? '☀ Light' : '☾ Dark'}</span> mode</h2>
             </header>
             <main>
                 <div className="computation-type-label text-center dashed-border">Weight Converter</div>
                 <div className="display-container flex solid-border">
                     <div id="input-display">
                         <div className="display-label">From</div>
-                        <div id="input-value">0</div>
+                        <div id="input-value">{rawValue}</div>
                     </div>
-                    <select id="from-selector" className="pointer" aria-label="Convert from unit" onChange={() => {
-                        handleConversion()
-                    }}>
-                        <option value="kg">KG</option>
-                        <option value="lb">LB</option>
-                        <option value="g">G</option>
-                        <option value="mt">MT</option>
-                        <option value="mcg">MCG</option>
-                        <option value="mg">MG</option>
-                        <option value="oz">OZ</option>
+                    <select id="from-selector" className="solid-border pointer" aria-label="Convert from unit"
+                            value={fromUnit}
+                            onChange={(e) => setFromUnit(e.target.value as WeightUnit)}>
+                        {UNIT_OPTIONS.map(({value, label}) => (<option key={value} value={value}>{label}</option>))}
                     </select>
                 </div>
-                <div className="swap-button flex items-center solid-border pointer"
-                     onClick={() => switchConversions()}>⇅
+                <button type="button" className="swap-button flex items-center solid-border pointer"
+                        aria-label="Swap units of conversion" onClick={switchConversions}>⇅
                     <span className="swap-button-hover-box solid-border">Swap units of conversion.</span>
-                </div>
+                </button>
                 <div className="conversion-container flex solid-border">
                     <div id="conversion-display">
                         <div className="display-label">To</div>
-                        <div id="conversion-value">0</div>
+                        <div id="conversion-value" aria-live="polite">{result}</div>
                     </div>
-                    <select id="to-selector" className="pointer" aria-label="Convert to unit" onChange={() => {
-                        handleConversion()
-                    }}>
-                        <option value="lb">LB</option>
-                        <option value="kg">KG</option>
-                        <option value="g">G</option>
-                        <option value="mt">MT</option>
-                        <option value="mcg">MCG</option>
-                        <option value="mg">MG</option>
-                        <option value="oz">OZ</option>
+                    <select id="to-selector" className="solid-border pointer" aria-label="Convert to unit"
+                            value={toUnit}
+                            onChange={(e) => setToUnit(e.target.value as WeightUnit)}>
+                        {UNIT_OPTIONS.map(({value, label}) => (<option key={value} value={value}>{label}</option>))}
                     </select>
                 </div>
                 <div className="buttons-container dashed-border">
-                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>7
-                    </div>
-                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>8
-                    </div>
-                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>9
-                    </div>
-                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>4
-                    </div>
-                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>5
-                    </div>
-                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>6
-                    </div>
-                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>1
-                    </div>
-                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>2
-                    </div>
-                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>3
-                    </div>
-                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>±
-                    </div>
-                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>0
-                    </div>
-                    <div className="button solid-border text-center pointer" onClick={(e) => handleConversion(e)}>.
-                    </div>
+                    {KEYPAD_KEYS.map((key) => (
+                        <button key={key} type="button" className="button solid-border text-center pointer"
+                                aria-label={key === '±' ? 'Toggle sign' : key === '.' ? 'Decimal point' : undefined}
+                                onClick={() => handleKeypadPress(key)}>{key}</button>
+                    ))}
                     <div className="button-last-row flex">
-                        <div className="button solid-border text-center pointer"
-                             onClick={(e) => handleConversion(e)}>Clear
-                        </div>
-                        <div className="button solid-border text-center pointer"
-                             onClick={(e) => handleConversion(e)}>⌫
-                        </div>
+                        <button type="button" className="button solid-border text-center pointer"
+                                onClick={clearValue}>Clear
+                        </button>
+                        <button type="button" className="button solid-border text-center pointer" aria-label="Backspace"
+                                onClick={backspace}>⌫
+                        </button>
                     </div>
                 </div>
-                <div id="formula-container" className="text-center">kg = lb x 2.20462262</div>
+                <div id="formula-container" className="text-center" aria-live="polite">{formula}</div>
             </main>
             <footer className="text-center">
                 <h3>© 2026 | Antonio Saucedo</h3>

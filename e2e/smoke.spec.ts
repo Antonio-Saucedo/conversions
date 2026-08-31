@@ -10,7 +10,7 @@ test.describe('Instant Conversion smoke tests', () => {
     test('converts 1 kg to lb end-to-end', async ({page}) => {
         await page.goto('/')
         await page.locator('.buttons-container .button.pointer').filter({hasText: /^1$/}).click()
-        await expect(page.locator('#conversion-value')).toHaveText('2.2')
+        await expect(page.locator('#conversion-value')).toHaveText('2.20')
     })
 
     test('toggles dark mode', async ({page}) => {
